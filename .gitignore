@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node/Frontend
+node_modules/
+dist/
+
+# Docker
+*.tar
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+crash.log
+
+# Ansible
+*.retry
+
+# Misc
+.env
+.DS_Store
