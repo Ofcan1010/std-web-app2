@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Student Management</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="p-4">
+  <div class="container">
+    <h1 class="mb-4">Student Management</h1>
+
+    <h4 id="formTitle">Add / Update Student</h4>
+    <div class="row g-2 mb-3">
+      <div class="col-md-3">
+        <input class="form-control" type="text" id="name" placeholder="Name">
+      </div>
+      <div class="col-md-3">
+        <input class="form-control" type="text" id="department" placeholder="Department">
+      </div>
+      <div class="col-md-3">
+        <input class="form-control" type="text" id="student_number" placeholder="Student Number">
+      </div>
+      <div class="col-md-3 d-grid">
+        <button class="btn btn-primary" id="saveBtn">Save</button>
+      </div>
+      <input type="hidden" id="editingId">
+    </div>
+
+    <h4>All Students</h4>
+    <table class="table table-striped" id="studentTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Department</th>
+          <th>Student Number</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="studentList"></tbody>
+    </table>
+
+    <div class="mt-4">
+      <h4>Backup & Restore</h4>
+      <div class="row mb-3">
+        <div class="col-md-6 d-flex gap-2 flex-wrap">
+          <button class="btn btn-success" onclick="backupData()">JSON Backup</button>
+          <input type="file" id="restoreFile" class="form-control w-auto">
+          <button class="btn btn-warning" onclick="restoreData()">JSON Restore</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6 d-flex gap-2 flex-wrap">
+          <button class="btn btn-outline-success" onclick="sqlBackup()">SQL Backup</button>
+          <input type="file" id="sqlRestoreFile" class="form-control w-auto">
+          <button class="btn btn-outline-warning" onclick="sqlRestore()">SQL Restore</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const backendUrl = window.location.port === "8080"
+        ? "http://localhost:5000"
+        : "http://localhost:5001";
+
+      document.getElementById("saveBtn").addEventListener("click", submitStudent);
+
+      function submitStudent() {
+        const id = document.getElementById("editingId").value;
+        const data = {
+          name: document.getElementById("name").value,
+          department: document.getElementById("department").value,
+          student_number: document.getElementById("student_number").value
+        };
+
+        const url = id ? `${backendUrl}/update/${id}` : `${backendUrl}/add`;
+        const method = id ? "PUT" : "POST";
+
+        fetch(url, {
+          method: method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(res => {
+          alert(res.message);
+          resetForm();
+          listStudents();
+        });
+      }
+
+      function listStudents() {
+        fetch(`${backendUrl}/list`)
+          .then(res => res.json())
+          .then(data => {
+            const list = document.getElementById("studentList");
+            list.innerHTML = "";
+            data.forEach(student => {
+              const row = document.createElement("tr");
+              row.innerHTML = `
+                <td>${student.id}</td>
+                <td>${student.name}</td>
+                <td>${student.department}</td>
+                <td>${student.student_number}</td>
+                <td>
+                  <button class="btn btn-sm btn-secondary edit-btn">Edit</button>
+                  <button class="btn btn-sm btn-danger delete-btn">Delete</button>
+                </td>`;
+              row.querySelector(".edit-btn").addEventListener("click", () => editStudent(student.id));
+              row.querySelector(".delete-btn").addEventListener("click", () => deleteStudent(student.id));
+
+              list.appendChild(row);
+            });
+          });
+      }
+
+      function deleteStudent(studentId) {
+         if (confirm("Are you sure you want to delete this student?")) {
+             fetch(`${backendUrl}/students/${studentId}`, { method: "DELETE" })
+                .then(() => listStudents());
+          }
+      }
+
+
+      function editStudent(id) {
+        fetch(`${backendUrl}/read/${id}`)
+          .then(res => res.json())
+          .then(student => {
+            document.getElementById("name").value = student.name;
+            document.getElementById("department").value = student.department;
+            document.getElementById("student_number").value = student.student_number;
+            document.getElementById("editingId").value = student.id;
+            document.getElementById("formTitle").innerText = "Update Student";
+          });
+      }
+
+      function resetForm() {
+        document.getElementById("name").value = "";
+        document.getElementById("department").value = "";
+        document.getElementById("student_number").value = "";
+        document.getElementById("editingId").value = "";
+        document.getElementById("formTitle").innerText = "Add / Update Student";
+      }
+
+      function backupData() {
+        window.location.href = `${backendUrl}/backup`;
+      }
+
+      function restoreData() {
+        const fileInput = document.getElementById("restoreFile");
+        if (fileInput.files.length === 0) {
+          alert("Please select a JSON file.");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        fetch(`${backendUrl}/restore`, {
+          method: "POST",
+          body: formData
+        })
+        .then(res => res.json())
+        .then(res => {
+          alert(res.message || "JSON restore complete.");
+          listStudents();
+        });
+      }
+
+      function sqlBackup() {
+        window.location.href = `${backendUrl}/sql-backup`;
+      }
+
+      function sqlRestore() {
+        const fileInput = document.getElementById("sqlRestoreFile");
+        if (fileInput.files.length === 0) {
+          alert("Please select an SQL file.");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        fetch(`${backendUrl}/sql-restore`, {
+          method: "POST",
+          body: formData
+        })
+        .then(res => res.json())
+        .then(res => {
+          alert(res.message || "SQL restore complete.");
+          listStudents();
+        });
+      }
+
+      listStudents();
+    </script>
+  </div>
+</body>
+</html>
