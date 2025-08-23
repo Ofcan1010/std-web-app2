@@ -1,0 +1,31 @@
+- hosts: all
+  become: yes
+  tasks:
+    - name: Install k3s
+      shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.29.6+k3s1 sh -
+      args: { creates: /usr/local/bin/k3s }
+
+    - name: Symlink kubectl
+      file: { src: /usr/local/bin/kubectl, dest: /usr/bin/kubectl, state: link, force: true }
+
+    - name: Create k8s dir
+      file: { path: /opt/k8s, state: directory }
+
+    - name: Copy manifests
+      copy: { src: files/k8s/, dest: /opt/k8s/ }
+
+    - name: Apply namespace first
+      shell: kubectl apply -f /opt/k8s/namespace.yaml
+
+    - name: Apply rest
+      shell: |
+        kubectl -n prod apply -f /opt/k8s/configmap.yaml
+        kubectl -n prod apply -f /opt/k8s/secret.yaml
+        kubectl -n prod apply -f /opt/k8s/db-deploy.yaml
+        kubectl -n prod apply -f /opt/k8s/db-svc.yaml
+        kubectl -n prod apply -f /opt/k8s/backend-deploy.yaml
+        kubectl -n prod apply -f /opt/k8s/backend-svc.yaml
+        kubectl -n prod apply -f /opt/k8s/frontend-deploy.yaml
+        kubectl -n prod apply -f /opt/k8s/frontend-svc.yaml
+        kubectl -n prod apply -f /opt/k8s/middleware-strip-api.yaml
+        kubectl -n prod apply -f /opt/k8s/ingress.yaml

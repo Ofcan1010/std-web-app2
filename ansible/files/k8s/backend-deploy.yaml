@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: prod
+  labels: { app: backend }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: backend } }
+  template:
+    metadata: { labels: { app: backend } }
+    spec:
+      containers:
+        - name: backend
+          image: ofcan1010/backend:v1
+          ports: [{ containerPort: 5000 }]
+          env:
+            - name: MYSQL_DATABASE
+              valueFrom: { configMapKeyRef: { name: app-config, key: MYSQL_DATABASE } }
+            - name: MYSQL_USER
+              valueFrom: { secretKeyRef: { name: app-secret, key: MYSQL_USER } }
+            - name: MYSQL_PASSWORD
+              valueFrom: { secretKeyRef: { name: app-secret, key: MYSQL_PASSWORD } }
+          readinessProbe:
+            httpGet: { path: /health, port: 5000 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 5000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10

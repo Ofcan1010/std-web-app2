@@ -1,0 +1,26 @@
+services:
+  db:
+    build: ./db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: studentdb
+      MYSQL_USER: student
+      MYSQL_PASSWORD: s3cr3t
+    ports:
+      - "3306:3306"
+
+  backend:
+    build: ./backend
+    environment:
+      MYSQL_DATABASE: studentdb
+      MYSQL_USER: student
+      MYSQL_PASSWORD: s3cr3t
+    ports:
+      - "5000:5000"
+    depends_on: [db]
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on: [backend]
