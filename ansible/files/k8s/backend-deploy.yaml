@@ -16,11 +16,20 @@ spec:
           ports: [{ containerPort: 5000 }]
           env:
             - name: MYSQL_DATABASE
-              value: "studentdb"
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: MYSQL_DATABASE
             - name: MYSQL_USER
-              value: "student"
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: MYSQL_USER
             - name: MYSQL_PASSWORD
-              value: "s3cr3t"
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: MYSQL_PASSWORD
           readinessProbe:
             httpGet: { path: /health, port: 5000 }
             initialDelaySeconds: 5

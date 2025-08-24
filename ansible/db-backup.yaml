@@ -1,0 +1,102 @@
+---
+- hosts: all
+  become: yes
+  gather_facts: false
+
+  vars:
+    namespace: prod
+    schedule: "0 3 * * *"
+    timezone: "Europe/Istanbul"
+    image: "ofcan1010/backend:v1"
+    mysql_host: "db"
+    mysql_port: 3306
+    mysql_user_key: "MYSQL_USER"
+    mysql_pass_key: "MYSQL_PASSWORD"
+    mysql_db_key: "MYSQL_DATABASE"
+    secret_name: "app-secret"
+    pvc_name: "backups-pvc"
+    cronjob_manifest_path: "/opt/k8s/db-backup-cronjob.yaml"
+
+  tasks:
+    - name: Ensure namespace
+      shell: kubectl apply -f /opt/k8s/namespace.yaml
+
+    - name: Ensure backups PVC
+      shell: kubectl -n {{ namespace }} apply -f /opt/k8s/backups-pvc.yaml
+
+    - name: Ensure DB secret
+      shell: kubectl -n {{ namespace }} apply -f /opt/k8s/secret.yaml
+
+    - name: Render CronJob manifest
+      copy:
+        dest: "{{ cronjob_manifest_path }}"
+        mode: '0644'
+        content: |
+          apiVersion: batch/v1
+          kind: CronJob
+          metadata:
+            name: db-backup
+            namespace: {{ namespace }}
+          spec:
+            schedule: "{{ schedule }}"
+            timeZone: "{{ timezone }}"
+            concurrencyPolicy: Forbid
+            successfulJobsHistoryLimit: 3
+            failedJobsHistoryLimit: 3
+            jobTemplate:
+              spec:
+                template:
+                  spec:
+                    restartPolicy: OnFailure
+                    volumes:
+                      - name: backups
+                        persistentVolumeClaim:
+                          claimName: {{ pvc_name }}
+                    containers:
+                      - name: backup
+                        image: "{{ image }}"
+                        env:
+                          - name: MYSQL_HOST
+                            value: "{{ mysql_host }}"
+                          - name: MYSQL_PORT
+                            value: "{{ mysql_port }}"
+                          - name: MYSQL_USER
+                            valueFrom:
+                              secretKeyRef:
+                                name: {{ secret_name }}
+                                key: {{ mysql_user_key }}
+                          - name: MYSQL_DATABASE
+                            valueFrom:
+                              configMapKeyRef:
+                                name: app-config
+                                key: {{ mysql_db_key }}
+                          - name: MYSQL_PASSWORD
+                            valueFrom:
+                              secretKeyRef:
+                                name: {{ secret_name }}
+                                key: {{ mysql_pass_key }}
+                        volumeMounts:
+                          - name: backups
+                            mountPath: /app/backups
+                        command: ["/bin/sh","-lc"]
+                        args:
+                          - |
+                            set -euo pipefail
+                            mkdir -p /app/backups
+                            C=$(mysqldump --version 2>&1 | tr A-Z a-z || true)
+                            if echo "$C" | grep -q mariadb; then
+                              SSL="--ssl --ssl-verify-server-cert=OFF"
+                            else
+                              SSL="--ssl-mode=REQUIRED"
+                            fi
+                            F="/app/backups/backup_$(date -u +%F_%H-%M).sql"
+                            mysqldump --no-defaults \
+                              -h "$MYSQL_HOST" -P "$MYSQL_PORT" \
+                              -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" \
+                              --single-transaction --quick --skip-lock-tables \
+                              --no-tablespaces $SSL "$MYSQL_DATABASE" > "$F"
+                            [ -s "$F" ] || { echo "empty dump"; exit 1; }
+                            find /app/backups -type f -name '*.sql' -mtime +180 -delete
+
+    - name: Apply CronJob
+      shell: kubectl -n {{ namespace }} apply -f {{ cronjob_manifest_path }}
