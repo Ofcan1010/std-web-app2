@@ -5,7 +5,7 @@ metadata:
   namespace: prod
   labels: { app: backend }
 spec:
-  replicas: 2
+  replicas: 1
   selector: { matchLabels: { app: backend } }
   template:
     metadata: { labels: { app: backend } }
@@ -16,11 +16,11 @@ spec:
           ports: [{ containerPort: 5000 }]
           env:
             - name: MYSQL_DATABASE
-              valueFrom: { configMapKeyRef: { name: app-config, key: MYSQL_DATABASE } }
+              value: "studentdb"
             - name: MYSQL_USER
-              valueFrom: { secretKeyRef: { name: app-secret, key: MYSQL_USER } }
+              value: "student"
             - name: MYSQL_PASSWORD
-              valueFrom: { secretKeyRef: { name: app-secret, key: MYSQL_PASSWORD } }
+              value: "s3cr3t"
           readinessProbe:
             httpGet: { path: /health, port: 5000 }
             initialDelaySeconds: 5
@@ -29,3 +29,10 @@ spec:
             httpGet: { path: /health, port: 5000 }
             initialDelaySeconds: 10
             periodSeconds: 10
+          volumeMounts:
+            - name: backups
+              mountPath: /app/backups
+      volumes:
+        - name: backups
+          persistentVolumeClaim:
+            claimName: backups-pvc
