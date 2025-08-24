@@ -107,10 +107,8 @@ def read_student(id):
 
 @app.route('/sql-backup', methods=['GET'])
 def sql_backup():
-    db = os.getenv("MYSQL_DATABASE")
-    user = os.getenv("MYSQL_USER")
-    pw = os.getenv("MYSQL_PASSWORD")
-    cmd = f"mysqldump -h db -u {user} -p{pw} {db} > backup.sql"
+    db = os.getenv("MYSQL_DATABASE"); user = os.getenv("MYSQL_USER"); pw = os.getenv("MYSQL_PASSWORD")
+    cmd = f"mysqldump -h db -u {user} -p{pw} --ssl-mode=DISABLED {db} > backup.sql"
     r = subprocess.run(cmd, shell=True, executable='/bin/bash')
     if r.returncode != 0: return jsonify({'error':'Backup failed'}), 500
     return send_file('backup.sql', as_attachment=True)
@@ -118,10 +116,8 @@ def sql_backup():
 @app.route('/sql-restore', methods=['POST'])
 def sql_restore():
     file = request.files['file']; file.save('restore.sql')
-    db = os.getenv("MYSQL_DATABASE")
-    user = os.getenv("MYSQL_USER")
-    pw = os.getenv("MYSQL_PASSWORD")
-    cmd = f"mysql -h db -u {user} -p{pw} {db} < restore.sql"
+    db = os.getenv("MYSQL_DATABASE"); user = os.getenv("MYSQL_USER"); pw = os.getenv("MYSQL_PASSWORD")
+    cmd = f"mysql -h db -u {user} -p{pw} --ssl-mode=DISABLED {db} < restore.sql"
     r = subprocess.run(cmd, shell=True, executable='/bin/bash')
     if r.returncode != 0: return jsonify({'error':'Restore failed'}), 500
     return jsonify({'message':'SQL restore completed'})

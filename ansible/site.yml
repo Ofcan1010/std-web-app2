@@ -1,5 +1,6 @@
 - hosts: all
   become: yes
+  gather_facts: false
   tasks:
     - name: Install k3s
       shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.29.6+k3s1 sh -

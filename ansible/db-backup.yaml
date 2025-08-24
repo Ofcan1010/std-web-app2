@@ -21,6 +21,9 @@
     - name: Ensure namespace
       shell: kubectl apply -f /opt/k8s/namespace.yaml
 
+    - name: Ensure ConfigMap
+      shell: kubectl -n {{ namespace }} apply -f /opt/k8s/configmap.yaml
+
     - name: Ensure backups PVC
       shell: kubectl -n {{ namespace }} apply -f /opt/k8s/backups-pvc.yaml
 
@@ -59,7 +62,7 @@
                           - name: MYSQL_HOST
                             value: "{{ mysql_host }}"
                           - name: MYSQL_PORT
-                            value: "{{ mysql_port }}"
+                            value: "{{ mysql_port | string }}"
                           - name: MYSQL_USER
                             valueFrom:
                               secretKeyRef:
@@ -83,18 +86,13 @@
                           - |
                             set -euo pipefail
                             mkdir -p /app/backups
-                            C=$(mysqldump --version 2>&1 | tr A-Z a-z || true)
-                            if echo "$C" | grep -q mariadb; then
-                              SSL="--ssl --ssl-verify-server-cert=OFF"
-                            else
-                              SSL="--ssl-mode=REQUIRED"
-                            fi
                             F="/app/backups/backup_$(date -u +%F_%H-%M).sql"
                             mysqldump --no-defaults \
                               -h "$MYSQL_HOST" -P "$MYSQL_PORT" \
                               -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" \
-                              --single-transaction --quick --skip-lock-tables \
-                              --no-tablespaces $SSL "$MYSQL_DATABASE" > "$F"
+                              --ssl-mode=DISABLED \
+                              --single-transaction --quick --skip-lock-tables --no-tablespaces \
+                              "$MYSQL_DATABASE" > "$F"
                             [ -s "$F" ] || { echo "empty dump"; exit 1; }
                             find /app/backups -type f -name '*.sql' -mtime +180 -delete
 
