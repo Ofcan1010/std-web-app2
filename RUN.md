@@ -8,7 +8,7 @@
 2) Terraform:
    cd terraform
    terraform init
-   terraform apply -auto-approve -var region=eu-central-1 -var key_name=student-web-key -var my_ip=185.227.183.150/32
+   terraform apply -auto-approve -var region=eu-north-1 -var key_name=student-web-key -var my_ip=185.227.183.150/32
 
 3) Ansible:
    cd ..
