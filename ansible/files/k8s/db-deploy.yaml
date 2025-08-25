@@ -3,23 +3,38 @@ kind: Deployment
 metadata:
   name: db
   namespace: prod
-  labels: { app: db }
+  labels:
+    app: db
 spec:
   replicas: 1
-  selector: { matchLabels: { app: db } }
+  selector:
+    matchLabels:
+      app: db
   template:
-    metadata: { labels: { app: db } }
+    metadata:
+      labels:
+        app: db
     spec:
       containers:
         - name: mysql
-          image: ofcan1010/db:v1
-          ports: [{ containerPort: 3306 }]
+          image: docker.io/ofcan1010/db:v1
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "root"
+          envFrom:
+            - configMapRef:
+                name: app-config        # MYSQL_DATABASE
+            - secretRef:
+                name: app-secret        # MYSQL_USER, MYSQL_PASSWORD
           volumeMounts:
             - name: data
               mountPath: /var/lib/mysql
       volumes:
         - name: data
-          persistentVolumeClaim: { claimName: mysql-pvc }
+          persistentVolumeClaim:
+            claimName: mysql-pvc
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -30,4 +45,5 @@ spec:
   accessModes: ["ReadWriteOnce"]
   storageClassName: local-path
   resources:
-    requests: { storage: 5Gi }
+    requests:
+      storage: 5Gi

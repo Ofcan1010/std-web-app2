@@ -12,6 +12,7 @@ services:
   backend:
     build: ./backend
     environment:
+      DB_HOST: db
       MYSQL_DATABASE: studentdb
       MYSQL_USER: student
       MYSQL_PASSWORD: s3cr3t

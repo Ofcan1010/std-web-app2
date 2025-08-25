@@ -4,7 +4,8 @@ metadata:
   name: db
   namespace: prod
 spec:
-  selector: { app: db }
+  selector:
+    app: db
   ports:
     - port: 3306
       targetPort: 3306

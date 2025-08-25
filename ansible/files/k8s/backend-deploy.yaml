@@ -3,18 +3,29 @@ kind: Deployment
 metadata:
   name: backend
   namespace: prod
-  labels: { app: backend }
+  labels:
+    app: backend
 spec:
   replicas: 1
-  selector: { matchLabels: { app: backend } }
+  selector:
+    matchLabels:
+      app: backend
   template:
-    metadata: { labels: { app: backend } }
+    metadata:
+      labels:
+        app: backend
     spec:
       containers:
         - name: backend
-          image: ofcan1010/backend:v1
-          ports: [{ containerPort: 5000 }]
+          image: docker.io/ofcan1010/backend:v3
+          ports:
+            - containerPort: 5000
           env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_HOST
             - name: MYSQL_DATABASE
               valueFrom:
                 configMapKeyRef:
@@ -31,11 +42,15 @@ spec:
                   name: app-secret
                   key: MYSQL_PASSWORD
           readinessProbe:
-            httpGet: { path: /health, port: 5000 }
+            httpGet:
+              path: /health
+              port: 5000
             initialDelaySeconds: 5
             periodSeconds: 5
           livenessProbe:
-            httpGet: { path: /health, port: 5000 }
+            httpGet:
+              path: /health
+              port: 5000
             initialDelaySeconds: 10
             periodSeconds: 10
           volumeMounts:
